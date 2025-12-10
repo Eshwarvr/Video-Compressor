@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Compression Tool - Parallel + ZIP Support</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: #1a1f3a;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #2d3561;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00d4ff;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        .upload-area {
+            border: 2px dashed #00d4ff;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #0f1428;
+        }
+
+        .upload-area:hover {
+            border-color: #00ffff;
+            background: #141d38;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        .upload-area.dragover {
+            border-color: #00ffff;
+            background: #141d38;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .settings-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #0f1428;
+            border-radius: 8px;
+            border: 1px solid #2d3561;
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #00d4ff;
+            font-size: 13px;
+        }
+
+        .setting-group select,
+        .setting-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #2d3561;
+            border-radius: 5px;
+            font-size: 13px;
+            background: #0a0e27;
+            color: #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .setting-group select:hover,
+        .setting-group input:hover {
+            border-color: #00d4ff;
+        }
+
+        .setting-group select:focus,
+        .setting-group input:focus {
+            border-color: #00ffff;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+        }
+
+        .setting-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            color: #e0e0e0;
+        }
+
+        .jobs-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .jobs-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .jobs-list::-webkit-scrollbar-track {
+            background: #0f1428;
+        }
+
+        .jobs-list::-webkit-scrollbar-thumb {
+            background: #00d4ff;
+            border-radius: 4px;
+        }
+
+        .jobs-list::-webkit-scrollbar-thumb:hover {
+            background: #00ffff;
+        }
+
+        .job-item {
+            background: #0f1428;
+            border: 1px solid #2d3561;
+            border-left: 4px solid transparent;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .job-item:hover {
+            border-color: #00d4ff;
+            background: #141d38;
+        }
+
+        .job-item.selected {
+            border-left-color: #00ffff;
+            background: #141d38;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
+        }
+
+        .job-item.processing {
+            border-left-color: #ff6b00;
+            animation: pulse 2s infinite;
+            background: #1a150f;
+        }
+
+        .job-item.completed {
+            border-left-color: #00ff00;
+            background: #0f1a0f;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .job-name {
+            font-weight: 600;
+            color: #00d4ff;
+            word-break: break-all;
+            flex: 1;
+        }
+
+        .job-type {
+            font-size: 11px;
+            padding: 2px 8px;
+            background: #2d3561;
+            color: #00d4ff;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+
+        .job-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+
+        .status-uploaded {
+            background: #1a2f4a;
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+
+        .status-queued {
+            background: #4a3f1a;
+            color: #ffaa00;
+            border: 1px solid #ffaa00;
+        }
+
+        .status-processing {
+            background: #4a3f1a;
+            color: #ff6b00;
+            border: 1px solid #ff6b00;
+        }
+
+        .status-completed {
+            background: #1a4a2a;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+
+        .status-failed {
+            background: #4a1a1a;
+            color: #ff3333;
+            border: 1px solid #ff3333;
+        }
+
+        .job-info {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #0a0e27;
+            border-radius: 3px;
+            margin: 8px 0;
+            overflow: hidden;
+            border: 1px solid #2d3561;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ffff);
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .job-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #00ffff);
+            color: #0a0e27;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: #00ff00;
+            color: #0a0e27;
+            font-weight: 600;
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.3);
+        }
+
+        .btn-danger {
+            background: #ff3333;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 5px 15px rgba(255, 51, 51, 0.3);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+        }
+
+        .notification {
+            padding: 12px 16px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            display: none;
+            border-left: 4px solid;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        .notification.success {
+            background: #0f2a0f;
+            color: #00ff00;
+            border-left-color: #00ff00;
+        }
+
+        .notification.error {
+            background: #2a0f0f;
+            color: #ff3333;
+            border-left-color: #ff3333;
+        }
+
+        .notification.warning {
+            background: #2a1f0f;
+            color: #ffaa00;
+            border-left-color: #ffaa00;
+        }
+
+        .notification.info {
+            background: #0f1a2a;
+            color: #00d4ff;
+            border-left-color: #00d4ff;
+        }
+
+        .queue-info {
+            background: #0f1428;
+            border-left: 4px solid #00d4ff;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #2d3561;
+        }
+
+        .queue-info-text {
+            color: #e0e0e0;
+            margin: 4px 0;
+        }
+
+        .parallel-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ff6b00;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: blink 1s infinite;
+            box-shadow: 0 0 5px #ff6b00;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .disabled-panel {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .zip-info {
+            background: #1a2a4a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #00d4ff;
+            border: 1px solid #2d3561;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .title {
+                font-size: 22px;
+            }
+
+            .panel {
+                padding: 20px;
+            }
+        }
+
+        ::selection {
+            background: #00d4ff;
+            color: #0a0e27;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- LEFT PANEL: Upload & Settings -->
+        <div class="panel">
+            <div class="title">📤 Upload Video</div>
+            <div class="subtitle">MP4, MOV, AVI, MKV, ZIP & More</div>
+
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click to select or drag & drop<br>Video files or ZIP archives</div>
+            </div>
+
+            <input type="file" id="fileInput" accept=".mp4,.mov,.avi,.mkv,.wmv,.flv,.webm,.mpeg,.mpg,.3gp,.zip">
+
+            <!-- Notifications -->
+            <div id="notification" class="notification"></div>
+
+            <!-- Settings Panel -->
+            <div id="settingsPanel" class="disabled-panel" style="margin-top: 30px;">
+                <div class="title" style="font-size: 18px; margin-bottom: 15px;">⚙️ Compression Settings</div>
+
+                <div id="selectedVideoInfo" style="background: #0f1428; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 12px; color: #00d4ff; border: 1px solid #2d3561;">
+                    No video selected
+                </div>
+
+                <div class="settings-section">
+                    <div class="setting-group">
+                        <label for="codecSelect">Video Codec:</label>
+                        <select id="codecSelect">
+                            <option value="h264">H.264 (Better Compatibility)</option>
+                            <option value="h265">H.265 (Better Compression)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="presetSelect">Quality Preset:</label>
+                        <select id="presetSelect">
+                            <option value="high">High Quality (Slow)</option>
+                            <option value="balanced" selected>Balanced (Recommended)</option>
+                            <option value="compressed">Maximum Compression (Slow)</option>
+                            <option value="custom">Custom CRF</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="speedSelect">Encoding Speed:</label>
+                        <select id="speedSelect">
+                            <option value="ultrafast">Ultrafast</option>
+                            <option value="superfast">Superfast</option>
+                            <option value="fast" selected>Fast</option>
+                            <option value="medium">Medium</option>
+                            <option value="slow">Slow</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="resolutionSelect">Resolution:</label>
+                        <select id="resolutionSelect">
+                            <option value="original" selected>Original</option>
+                            <option value="1920:1080">1080p (Full HD)</option>
+                            <option value="1280:720">720p (HD)</option>
+                            <option value="854:480">480p (SD)</option>
+                            <option value="640:360">360p (Mobile)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="crfInput">CRF Value (0-51):</label>
+                        <input type="number" id="crfInput" min="0" max="51" value="23">
+                    </div>
+
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="audioCheckbox" checked>
+                            <span>Preserve Audio</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn-primary" style="width: 100%; margin-top: 15px;" id="startCompressionBtn">▶️ Start Compression</button>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Jobs List -->
+        <div class="panel">
+            <div class="title">📋 Compression Queue</div>
+
+            <div class="queue-info" id="queueInfo">
+                <div class="queue-info-text">
+                    <span class="parallel-indicator"></span>
+                    <strong>Active:</strong> <span id="activeCount">0</span> | 
+                    <strong>Queued:</strong> <span id="queuedCount">0</span> | 
+                    <!--<strong>Max:</strong> <span id="maxCount">5</span>-->
+                </div>
+            </div>
+
+            <div class="jobs-list" id="jobsList">
+                <div class="empty-state">No compression jobs yet. Upload a video or ZIP to get started!</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============= STATE MANAGEMENT =============
+        const state = {
+            jobs: {},
+            selectedJobId: null,
+            statusPollingInterval: null
+        };
+
+        // ============= UTILITY FUNCTIONS =============
+
+        function showNotification(message, type = 'info') {
+            const notif = document.getElementById('notification');
+            notif.textContent = message;
+            notif.className = `notification show ${type}`;
+            setTimeout(() => notif.classList.remove('show'), 4000);
+        }
+
+        // ============= JOB MANAGEMENT =============
+
+        function selectVideoForCompression(jobId) {
+            state.selectedJobId = jobId;
+            const job = state.jobs[jobId];
+
+            let infoText = `Selected: ${job.filename}`;
+            if (job.file_type === 'zip') {
+                infoText += ` (${job.video_count || 0} videos)`;
+            }
+            document.getElementById('selectedVideoInfo').textContent = infoText;
+
+            const settingsPanel = document.getElementById('settingsPanel');
+            settingsPanel.classList.remove('disabled-panel');
+
+            if (job.settings) {
+                document.getElementById('codecSelect').value = job.settings.codec || 'h264';
+                document.getElementById('presetSelect').value = job.settings.preset || 'balanced';
+                document.getElementById('speedSelect').value = job.settings.speed || 'fast';
+                document.getElementById('resolutionSelect').value = job.settings.resolution || 'original';
+                document.getElementById('crfInput').value = job.settings.crf || '23';
+                document.getElementById('audioCheckbox').checked = job.settings.preserve_audio !== false;
+            } else {
+                document.getElementById('codecSelect').value = 'h264';
+                document.getElementById('presetSelect').value = 'balanced';
+                document.getElementById('speedSelect').value = 'fast';
+                document.getElementById('resolutionSelect').value = 'original';
+                document.getElementById('crfInput').value = '23';
+                document.getElementById('audioCheckbox').checked = true;
+            }
+
+            document.querySelectorAll('.job-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            const selectedJob = document.querySelector(`[data-job-id="${jobId}"]`);
+            if (selectedJob) {
+                selectedJob.classList.add('selected');
+            }
+
+            showNotification(`Selected: ${job.filename}`, 'info');
+        }
+
+        function startCompressionForSelected() {
+            if (!state.selectedJobId) {
+                showNotification('Please select a video first', 'warning');
+                return;
+            }
+
+            const job = state.jobs[state.selectedJobId];
+            if (!job) return;
+
+            if (job.status !== 'uploaded') {
+                showNotification('Video already processing', 'warning');
+                return;
+            }
+
+            // Save settings
+            job.settings = {
+                codec: document.getElementById('codecSelect').value,
+                preset: document.getElementById('presetSelect').value,
+                speed: document.getElementById('speedSelect').value,
+                resolution: document.getElementById('resolutionSelect').value,
+                crf: parseInt(document.getElementById('crfInput').value) || 23,
+                preserve_audio: document.getElementById('audioCheckbox').checked
+            };
+
+            console.log('Starting compression:', job.settings);
+
+            fetch('/compress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    job_id: state.selectedJobId,
+                    settings: job.settings
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showNotification('Error: ' + data.error, 'error');
+                } else {
+                    showNotification('🚀 Compression started!', 'success');
+                    job.status = 'queued';
+                    job.message = '⏳ In queue...';
+                    updateJobDisplay(state.selectedJobId);
+                    if (!state.statusPollingInterval) {
+                        startStatusPolling();
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                showNotification('Failed to start compression', 'error');
+            });
+        }
+
+        // ============= UPLOAD HANDLING =============
+
+        document.getElementById('uploadArea').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+            document.getElementById('uploadArea').addEventListener(event, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        document.getElementById('uploadArea').addEventListener('dragover', () => {
+            document.getElementById('uploadArea').classList.add('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragleave', () => {
+            document.getElementById('uploadArea').classList.remove('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('drop', (e) => {
+            document.getElementById('uploadArea').classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('fileInput').files = files;
+                uploadFile();
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', uploadFile);
+
+        function uploadFile() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        showNotification('Upload error: ' + data.error, 'error');
+                    } else {
+                        const jobId = data.job_id;
+                        state.jobs[jobId] = {
+                            job_id: jobId,
+                            filename: data.filename,
+                            file_type: data.file_type,
+                            status: 'uploaded',
+                            progress: 0,
+                            message: data.file_type === 'zip' ? `${data.video_count} videos ready` : 'Ready for compression',
+                            settings: null,
+                            video_count: data.video_count || 0,
+                            video_names: data.video_names || []
+                        };
+                        renderJobs();
+                        showNotification('✅ ' + (data.file_type === 'zip' ? 'ZIP uploaded!' : 'Video uploaded!'), 'success');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    showNotification('Upload failed', 'error');
+                });
+
+            document.getElementById('fileInput').value = '';
+        }
+
+        // ============= STATUS POLLING =============
+
+        function startStatusPolling() {
+            state.statusPollingInterval = setInterval(() => {
+                let anyProcessing = false;
+
+                Object.keys(state.jobs).forEach(jobId => {
+                    const status = state.jobs[jobId].status;
+                    if (['queued', 'processing'].includes(status)) {
+                        anyProcessing = true;
+                        fetchJobStatus(jobId);
+                    }
+                });
+
+                if (!anyProcessing) {
+                    clearInterval(state.statusPollingInterval);
+                    state.statusPollingInterval = null;
+                }
+            }, 500);
+        }
+
+        function fetchJobStatus(jobId) {
+            fetch(`/status/${jobId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (state.jobs[jobId]) {
+                        const oldStatus = state.jobs[jobId].status;
+                        state.jobs[jobId].status = data.status;
+                        state.jobs[jobId].progress = data.progress;
+                        state.jobs[jobId].message = data.message;
+                        if (data.video_count) {
+                            state.jobs[jobId].video_count = data.video_count;
+                            state.jobs[jobId].videos_completed = data.videos_completed || 0;
+                        }
+                        updateJobDisplay(jobId);
+                        updateQueueStatus(data);
+                    }
+                })
+                .catch(err => console.error('Status fetch error:', err));
+        }
+
+        function updateQueueStatus(data) {
+            document.getElementById('activeCount').textContent = data.active_compressions || 0;
+            document.getElementById('queuedCount').textContent = data.pending_jobs || 0;
+            document.getElementById('maxCount').textContent = data.max_concurrent || 5;
+        }
+
+        // ============= RENDERING =============
+
+        function renderJobs() {
+            const jobsList = document.getElementById('jobsList');
+            const jobs = Object.values(state.jobs).sort((a, b) => {
+                if (a.status === 'completed' && b.status !== 'completed') return 1;
+                if (a.status !== 'completed' && b.status === 'completed') return -1;
+                return 0;
+            });
+
+            if (jobs.length === 0) {
+                jobsList.innerHTML = '<div class="empty-state">No compression jobs yet. Upload a video or ZIP to get started!</div>';
+                return;
+            }
+
+            jobsList.innerHTML = jobs.map(job => {
+                const configureButton = job.status === 'uploaded' 
+                    ? `<button class="btn-primary btn-small" onclick="selectVideoForCompression('${job.job_id}')">⚙️ Configure</button>`
+                    : '';
+
+                const actionButtons = job.status === 'completed' 
+                    ? `<button class="btn-success btn-small" onclick="downloadFile('${job.job_id}')">⬇️ Download</button>
+                       <button class="btn-danger btn-small" onclick="deleteJob('${job.job_id}')">🗑️ Delete</button>`
+                    : '';
+
+                const typeLabel = job.file_type === 'zip' ? `<span class="job-type">📦 ZIP (${job.video_count})</span>` : '<span class="job-type">🎬 VIDEO</span>';
+
+                return `
+                    <div class="job-item ${state.selectedJobId === job.job_id ? 'selected' : ''} ${job.status === 'processing' ? 'processing' : ''} ${job.status === 'completed' ? 'completed' : ''}" data-job-id="${job.job_id}">
+                        <div class="job-header">
+                            <div class="job-name">${job.filename}</div>
+                            ${typeLabel}
+                            <span class="job-status status-${job.status}">${job.status}</span>
+                        </div>
+                        <div class="job-info">${job.message || ''}</div>
+                        ${job.progress > 0 && job.status !== 'completed' ? `
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${job.progress}%;"></div>
+                            </div>
+                        ` : ''}
+                        <div class="job-actions">
+                            ${configureButton}
+                            ${actionButtons}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateJobDisplay(jobId) {
+            const job = state.jobs[jobId];
+            const jobEl = document.querySelector(`[data-job-id="${jobId}"]`);
+            if (!jobEl || !job) return;
+
+            jobEl.querySelector('.job-status').textContent = job.status.toUpperCase();
+            jobEl.querySelector('.job-status').className = `job-status status-${job.status}`;
+            jobEl.querySelector('.job-info').textContent = job.message || '';
+
+            if (job.progress > 0 && job.status !== 'completed') {
+                let progressBar = jobEl.querySelector('.progress-bar');
+                if (!progressBar) {
+                    progressBar = document.createElement('div');
+                    progressBar.className = 'progress-bar';
+                    progressBar.innerHTML = '<div class="progress-fill"></div>';
+                    jobEl.insertBefore(progressBar, jobEl.querySelector('.job-actions'));
+                }
+                progressBar.querySelector('.progress-fill').style.width = job.progress + '%';
+            }
+
+            const actionsEl = jobEl.querySelector('.job-actions');
+            if (job.status === 'uploaded') {
+                actionsEl.innerHTML = `<button class="btn-primary btn-small" onclick="selectVideoForCompression('${jobId}')">⚙️ Configure</button>`;
+            } else if (job.status === 'completed') {
+                actionsEl.innerHTML = `
+                    <button class="btn-success btn-small" onclick="downloadFile('${jobId}')">⬇️ Download</button>
+                    <button class="btn-danger btn-small" onclick="deleteJob('${jobId}')">🗑️ Delete</button>
+                `;
+            } else {
+                actionsEl.innerHTML = '';
+            }
+
+            jobEl.className = `job-item ${state.selectedJobId === jobId ? 'selected' : ''} ${job.status === 'processing' ? 'processing' : ''} ${job.status === 'completed' ? 'completed' : ''}`;
+        }
+
+        function downloadFile(jobId) {
+            window.location.href = `/download/${jobId}`;
+        }
+
+        function deleteJob(jobId) {
+            fetch(`/cleanup/${jobId}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    delete state.jobs[jobId];
+                    if (state.selectedJobId === jobId) {
+                        state.selectedJobId = null;
+                        document.getElementById('settingsPanel').classList.add('disabled-panel');
+                    }
+                    renderJobs();
+                    showNotification('Job deleted', 'info');
+                })
+                .catch(err => console.error('Delete error:', err));
+        }
+
+        // ============= EVENT LISTENERS =============
+        document.getElementById('startCompressionBtn').addEventListener('click', startCompressionForSelected);
+
+        // ============= INITIALIZATION =============
+        console.log('✅ Video Compression Tool - ZIP + Parallel Support');
+        renderJobs();
+
+        setInterval(() => {
+            fetch('/queue-status')
+                .then(r => r.json())
+                .then(data => updateQueueStatus(data))
+                .catch(() => {});
+        }, 2000);
+    </script>
+</body>
+</html>
