@@ -1,15 +1,3 @@
-"""
-Video Compression Tool - Flask Backend (PARALLEL MULTI-THREADING + ZIP SUPPORT)
-
-FEATURES:
-1. Single video compression (MP4, MOV, AVI, MKV, WMV, FLV, WEBM, MPEG, MPG, 3GP)
-2. ZIP file extraction and parallel compression
-3. Per-video configuration
-4. Background queue processor
-5. Parallel processing (5-24+ videos simultaneously)
-6. Real-time progress tracking
-"""
-
 from flask import Flask, render_template, request, jsonify, send_file
 import os
 import subprocess
